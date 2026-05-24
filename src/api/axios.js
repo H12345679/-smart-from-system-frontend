@@ -1,123 +1,75 @@
 import axios from "axios";
-import qs from "qs";
-import { getStore,removestore } from "../libs/storage.js";
+import { getStore, removestore } from "../libs/storage.js";
+import router from "../router";
 
+// 创建axios实例
+const service = axios.create({
+  baseURL: "http://localhost:8080/api/v1",
+  timeout: 15000,
+});
 
-axios.defaults.baseURL="/api"
-
-
-export function get(url,params){
-    const token=getStore('token');
-
-    return axios({
-        method:'get',
-        url:`${url}`,       
-        params:params,
-        headers:{
-            'token':token
-        }
+// 请求拦截器 - 自动携带JWT Token
+service.interceptors.request.use(
+  (config) => {
+    const token = getStore("token");
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
-    )
-}
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-export function post(url,params){
-    const token=getStore('token');
-    
-    return axios({
-        method:'post',
-        url:`${url}`,
-        data:params,
-        transformRequest:[function (data){
-            return qs.stringify(data,{allowDots:true})
-        }],
-        headers:{
-            'Content-Type':'application/x-www-form-urlencoded',
-            'token':token
-        }
-    })
-}
-
-export function postJson(url,params){
-    const token=getStore('token');
-
-    return axios({
-        method:'post',
-        url:`${url}`,
-        data:params,
-        headers:{
-            'Content-Type':'application/json',
-            'token':token
-        }
-    })
-}
-
-export function put(url,params){
-    const token=getStore('token');
-
-    return axios({
-        method:'put',
-        url:`${url}`,
-        data:params,
-        headers:{
-            'Content-Type':'application/json',
-            'token':token
-        }
-    })
-}
-
-export function del(url,params){
-    const token=getStore('token');
-
-    return axios({
-        method:'delete',
-        url:`${url}`,
-        data:params,
-        headers:{
-            'Content-Type':'application/json',
-            'token':token
-        }
-    })
-}
-
-axios.interceptors.response.use(res=>{
-    const result=res.data;
-    const code=result.statusCode
-    switch(code){
-        case '200':{
-            return Promise.resolve(result)
-        }
-        case '400':{
-            return Promise.reject("操作失败："+result.message)
-        }
-        case '401':{
-            removestore('token');
-            removestore('userInfo');
-            window.location.href = '/'; 
-            return new Promise(()=>{});
-        }
-        case '404':{
-            return Promise.reject('接口不存在')
-        }
-        case '500':{
-            return Promise.reject('服务器错误')
-        }
-        case '600':{
-            return Promise.reject('请重新登录')
-        }
-        default:{
-            return Promise.reject(result.message)
-        }
+// 响应拦截器 - 统一处理响应
+service.interceptors.response.use(
+  (response) => {
+    const res = response.data;
+    // 后端统一响应体: { code, message, data, timestamp }
+    if (res.code === 200) {
+      return res;
     }
-},err =>{
-    if (err.response && err.response.status === 401) {
-        removestore('token');
-        removestore('userInfo');
-        removestore('username');
-        removestore('userType');
-        removestore('avater');
-        window.location.href = '/';
-        return new Promise(() => {});
+    // 401: Token过期或未登录
+    if (res.code === 401) {
+      removestore("token");
+      removestore("userInfo");
+      router.push("/login");
+      return Promise.reject(new Error(res.message || "请重新登录"));
     }
-    return Promise.reject(err);
+    // 403: 权限不足
+    if (res.code === 403) {
+      return Promise.reject(new Error(res.message || "权限不足"));
+    }
+    // 其他错误
+    return Promise.reject(new Error(res.message || "操作失败"));
+  },
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      removestore("token");
+      removestore("userInfo");
+      router.push("/login");
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ========== 封装请求方法 ==========
+
+export function get(url, params) {
+  return service({ method: "get", url, params });
 }
-)
+
+export function post(url, data) {
+  return service({ method: "post", url, data });
+}
+
+export function put(url, data) {
+  return service({ method: "put", url, data });
+}
+
+export function del(url, data) {
+  return service({ method: "delete", url, data });
+}
+
+export default service;
