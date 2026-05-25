@@ -59,9 +59,14 @@
     </el-card>
 
     <!-- 新建批次 -->
-    <el-dialog title="新建养殖批次" :visible.sync="createVisible" width="500px">
+    <el-dialog title="新建养殖批次" :visible.sync="createVisible" width="500px" @open="fetchIdleTanks">
       <el-form :model="createForm" label-width="100px">
-        <el-form-item label="水池ID"><el-input-number v-model="createForm.tankId" :min="1" /></el-form-item>
+        <el-form-item label="水池">
+          <el-select v-model="createForm.tankId" placeholder="选择空闲水池" style="width:100%">
+            <el-option v-for="t in idleTanks" :key="t.id" :label="t.tankName + ' (' + t.tankCode + ')'" :value="t.id" />
+          </el-select>
+          <p style="font-size:12px;color:#999;margin-top:4px" v-if="idleTanks.length === 0">暂无空闲水池，请先新增水池</p>
+        </el-form-item>
         <el-form-item label="品种"><el-input v-model="createForm.speciesName" placeholder="如: 黄条鰤" /></el-form-item>
         <el-form-item label="入池尾数"><el-input-number v-model="createForm.initialCount" :min="1" /></el-form-item>
         <el-form-item label="入池均重(g)"><el-input-number v-model="createForm.initialAvgWeight" :min="0.1" :precision="1" /></el-form-item>
@@ -120,6 +125,7 @@
 
 <script>
 import { listBatches, createBatch, addFeedRecord, addMortalityRecord, addMedicationRecord, harvestBatch, exportBatchReport } from "../api/modules/batch";
+import { get } from "../api/axios";
 
 export default {
   name: "Batch",
@@ -131,6 +137,7 @@ export default {
       filter: { status: "" },
       page: 1, size: 10, total: 0,
       batchList: [],
+      idleTanks: [],
       createVisible: false, feedVisible: false, mortalityVisible: false, medicationVisible: false,
       currentBatch: null,
       createForm: { tankId: 1, speciesName: "", initialCount: 5000, initialAvgWeight: 50, supplier: "", quarantineCert: "" },
@@ -141,6 +148,12 @@ export default {
   },
   created() { this.fetchBatches(); },
   methods: {
+    async fetchIdleTanks() {
+      try {
+        const res = await get("/tank/list", { status: "IDLE" });
+        this.idleTanks = res.data || [];
+      } catch (e) { this.idleTanks = []; }
+    },
     async fetchBatches() {
       this.loading = true;
       try {

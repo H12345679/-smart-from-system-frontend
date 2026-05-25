@@ -37,6 +37,15 @@
           <i class="el-icon-s-marketing"></i>
           <span slot="title">数据分析</span>
         </el-menu-item>
+        <el-menu-item index="/fish-status">
+          <i class="el-icon-view"></i>
+          <span slot="title">鱼群状态</span>
+        </el-menu-item>
+        <!-- 管理员+经理可见 -->
+        <el-menu-item index="/business" v-if="hasPermission(['ADMIN','MANAGER'])">
+          <i class="el-icon-s-finance"></i>
+          <span slot="title">经营管理</span>
+        </el-menu-item>
         <!-- 仅管理员可见 -->
         <el-menu-item index="/rule" v-if="hasPermission(['ADMIN'])">
           <i class="el-icon-setting"></i>

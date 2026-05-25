@@ -11,6 +11,12 @@ const routes = [
     component: () => import("../views/Login.vue"),
   },
   {
+    path: "/trace",
+    name: "Trace",
+    component: () => import("../views/Trace.vue"),
+    meta: { public: true },
+  },
+  {
     path: "/",
     component: () => import("../views/Layout.vue"),
     redirect: "/dashboard",
@@ -70,6 +76,18 @@ const routes = [
         meta: { title: "数据分析", icon: "el-icon-s-marketing" },
       },
       {
+        path: "fish-status",
+        name: "FishStatus",
+        component: () => import("../views/FishStatus.vue"),
+        meta: { title: "鱼群状态", icon: "el-icon-view" },
+      },
+      {
+        path: "business",
+        name: "Business",
+        component: () => import("../views/Business.vue"),
+        meta: { title: "经营管理", icon: "el-icon-s-finance" },
+      },
+      {
         path: "audit",
         name: "Audit",
         component: () => import("../views/Audit.vue"),
@@ -87,7 +105,7 @@ const router = new VueRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
-  if (to.path === "/login") {
+  if (to.path === "/login" || to.path === "/trace") {
     next();
   } else {
     const token = getStore("token");
