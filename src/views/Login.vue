@@ -8,7 +8,20 @@
           <el-input v-model="form.username" prefix-icon="el-icon-user" placeholder="用户名" />
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="form.password" prefix-icon="el-icon-lock" placeholder="密码" type="password" show-password />
+          <el-input v-model="form.password" prefix-icon="el-icon-lock" placeholder="密码" type="password" show-password @keyup.enter.native="handleLogin" />
+        </el-form-item>
+        <el-form-item prop="captchaCode">
+          <div class="captcha-row">
+            <el-input v-model="form.captchaCode" prefix-icon="el-icon-key" placeholder="验证码" @keyup.enter.native="handleLogin" />
+            <img
+              :src="captchaImage"
+              class="captcha-img"
+              title="点击刷新验证码"
+              @click="refreshCaptcha"
+              v-if="captchaImage"
+            />
+            <span v-else class="captcha-loading" @click="refreshCaptcha">点击获取</span>
+          </div>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="loading" style="width:100%" @click="handleLogin">
@@ -22,22 +35,37 @@
 </template>
 
 <script>
-import { login } from "../api/modules/auth";
+import { login, getCaptcha } from "../api/modules/auth";
 import { setStore } from "../libs/storage";
 
 export default {
   name: "Login",
   data() {
     return {
-      form: { username: "", password: "" },
+      form: { username: "", password: "", captchaKey: "", captchaCode: "" },
+      captchaImage: "",
       rules: {
         username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
         password: [{ required: true, message: "请输入密码", trigger: "blur" }],
+        captchaCode: [{ required: true, message: "请输入验证码", trigger: "blur" }],
       },
       loading: false,
     };
   },
+  mounted() {
+    this.refreshCaptcha();
+  },
   methods: {
+    async refreshCaptcha() {
+      try {
+        const res = await getCaptcha();
+        this.form.captchaKey = res.data.captchaKey;
+        this.captchaImage = res.data.captchaImage;
+        this.form.captchaCode = "";
+      } catch (e) {
+        this.$message.error("验证码获取失败，请检查后端服务");
+      }
+    },
     handleLogin() {
       this.$refs.loginForm.validate(async (valid) => {
         if (!valid) return;
@@ -51,6 +79,8 @@ export default {
           this.$router.push("/dashboard");
         } catch (e) {
           this.$message.error(e.message || "登录失败");
+          // 登录失败刷新验证码，防止验证码已失效
+          this.refreshCaptcha();
         } finally {
           this.loading = false;
         }
@@ -91,5 +121,30 @@ export default {
   color: #aaa;
   font-size: 12px;
   margin-top: 12px;
+}
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.captcha-img {
+  height: 40px;
+  width: 120px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #dcdfe6;
+  object-fit: cover;
+}
+.captcha-loading {
+  height: 40px;
+  width: 120px;
+  line-height: 40px;
+  text-align: center;
+  font-size: 12px;
+  color: #909399;
+  background: #f5f7fa;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  cursor: pointer;
 }
 </style>

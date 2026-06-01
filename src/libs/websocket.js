@@ -1,20 +1,35 @@
 /**
  * WebSocket 连接管理器
- * 自动重连 + 心跳保活
+ * 自动重连 + 心跳保活 + JWT 鉴权
  */
+import { getStore } from "./storage";
+
 class WsManager {
   constructor() {
     this.ws = null;
     this.listeners = [];
     this.reconnectTimer = null;
     this.heartbeatTimer = null;
-    this.url = "ws://localhost:8080/api/v1/ws/monitor";
+    this.baseUrl = "ws://localhost:8080/api/v1/ws/monitor";
+  }
+
+  // 建立连接时携带 JWT，未登录则不连接
+  buildUrl() {
+    const token = getStore("token");
+    if (!token) return null;
+    return `${this.baseUrl}?token=${encodeURIComponent(token)}`;
   }
 
   connect() {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
 
-    this.ws = new WebSocket(this.url);
+    const url = this.buildUrl();
+    if (!url) {
+      console.warn("[WS] 未登录，跳过连接");
+      return;
+    }
+
+    this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
       console.log("[WS] 连接成功");

@@ -217,6 +217,7 @@ export default {
     },
     handleCommand(cmd) {
       if (cmd === "logout") {
+        wsManager.disconnect();
         removestore("token");
         removestore("userInfo");
         removestore("role");
